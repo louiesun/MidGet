@@ -1,8 +1,26 @@
 import win.ui;
+import win.reg;
+import web.json;
 /*DSG{{*/
-mainForm = win.form(text="MidGet";right=367;bottom=212;border="dialog frame")
-mainForm.add()
+mainForm = win.form(text="MidGet";right=200;bottom=212;border="dialog frame")
+mainForm.add(
+RegCheck={cls="button";text="CheckConfig";left=2;top=99;right=200;bottom=170;z=4};
+RegReset={cls="button";text="ResetConfig";left=1;top=164;right=200;bottom=187;z=3};
+RegSet={cls="button";text="SetConfig";left=2;top=23;right=200;bottom=99;z=2};
+SoftAbout={cls="button";text="About";left=2;top=189;right=102;bottom=213;z=5};
+SoftHelp={cls="button";text="Help";left=102;top=189;right=200;bottom=213;z=6};
+title={cls="static";text="GetMiddleSettings";left=3;top=1;right=199;bottom=21;align="center";transparent=1;z=1}
+)
 /*}}*/
+
+if(_ARGV[1]=='SETUP')
+{
+}
+else if(_ARGV[1]=='GET')
+{
+	return 0;
+}
+
 
 mainForm.show();
 return win.loopMessage();
