@@ -1,11 +1,12 @@
 import win.ui;
 import win.reg;
-import web.json;
+import fsys;
+import fsys.file;
 /*DSG{{*/
 mainForm = win.form(text="MidGet";right=200;bottom=212;border="dialog frame")
 mainForm.add(
-RegCheck={cls="button";text="CheckConfig";left=2;top=99;right=200;bottom=170;z=4};
-RegReset={cls="button";text="ResetConfig";left=1;top=164;right=200;bottom=187;z=3};
+RegCheck={cls="button";text="CheckConfig";left=2;top=99;right=200;bottom=169;z=4};
+RegReset={cls="button";text="ResetConfig";left=2;top=170;right=200;bottom=187;z=3};
 RegSet={cls="button";text="SetConfig";left=2;top=23;right=200;bottom=99;z=2};
 SoftAbout={cls="button";text="About";left=2;top=189;right=102;bottom=213;z=5};
 SoftHelp={cls="button";text="Help";left=102;top=189;right=200;bottom=213;z=6};
@@ -13,14 +14,154 @@ title={cls="static";text="GetMiddleSettings";left=3;top=1;right=199;bottom=21;al
 )
 /*}}*/
 
+function reset()
+{
+	var usp=win.getenv("APPDATA")+"\MidGet";
+	fsys.createDir(usp);
+	usp=usp+"\config.txt";
+	var fl=fsys.file(usp,"r");
+	
+	if(fl.path==null)
+	{
+		win.msgboxErr("Config File Not Exist. ","CFNE",0);
+		return 1;
+	}
+	
+	var openpre=io._exepath+' GET "%1"'
+	
+	var filesub="";
+	while(1)
+	{
+		filesub=fl.read()
+		if(filesub==null) break;
+		filesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
+		var dop=win.reg(filesub);
+		var filetype=dop.queryValue("Progid");
+		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
+		var filereg=win.reg(filetype);
+		var value=filereg.queryValue("");
+		var tb=string.split(value,"< && >");
+		
+		filereg.setSzValue("",tb[#tb]) ;
+	}
+	return check(false);
+}
+function check(isset)
+{
+	var usp=win.getenv("APPDATA")+"\MidGet";
+	fsys.createDir(usp);
+	usp=usp+"\config.txt";
+	var fl=fsys.file(usp,"r");
+	
+	if(fl.path==null)
+	{
+		win.msgboxErr("Config File Not Exist. ","CFNE",0);
+		return 1;
+	}
+	
+	var openpre='"'+io._exepath+'" GET "%1"';
+	
+	var filesub="";
+	var toh="Fail: ";
+	while(1)
+	{
+		filesub=fl.read();
+		if(filesub==null) break;
+		var tfilesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
+		var dop=win.reg(tfilesub);
+		var filetype=dop.queryValue("Progid");
+		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
+		var filereg=win.reg(filetype);
+		var value=filereg.queryValue("");
+		
+		var tb=string.split(value,"< && >");
+		var nvalue=openpre+" && "+tb[#tb];
+		
+		if((isset==true&&value!=nvalue)||(isset==false&&value==nvalue)) toh=toh+" "+filesub;
+		return;
+	}
+	//win.msgboxErr(toh,toh,0);
+	if(toh!="Fail: ")
+	{
+		win.msgboxErr(toh,"FAILED",0);
+		return 0;
+	}
+	if(isset!=null) win.msgbox("Seted","SUCCESS",0);
+	return 1;
+}
+function config()
+{
+	reset();
+	//return ;
+	
+	var usp=win.getenv("APPDATA")+"\MidGet";
+	fsys.createDir(usp);
+	usp=usp+"\config.txt";
+	var fl=fsys.file(usp,"r");
+	
+	if(fl.path==null)
+	{
+		win.msgboxErr("Config File Not Exist. ","CFNE",0);
+		return 1;
+	}
+	
+	var openpre='"'+io._exepath+'" GET "%1"';
+	
+	var filesub="";
+	while(1)
+	{
+		filesub=fl.read()
+		if(filesub==null) break;
+		filesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
+		var dop=win.reg(filesub);
+		var filetype=dop.queryValue("Progid");
+		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
+		var filereg=win.reg(filetype);
+		var value=filereg.queryValue("");
+		value=openpre+" && "+value;
+		//win.msgbox(value,value);
+		filereg.setSzValue("",value) ;
+	}
+	return check(true);
+}
+
 if(_ARGV[1]=='SETUP')
 {
+	if(!win.msgboxTest("Sure to reset? ","Confirm")) return 1;
+	var usp=win.getenv("APPDATA")+"\MidGet";
+	fsys.createDir(usp);
+	usp=usp+"\config.txt";
+	var fl=fsys.file(usp,"w");
+	fl.write('doc\r\ndocx\r\nppt\r\npptx\r\nxls\r\nxlsx\r\npdf\r\n');
+	fl.close();
+	config();
 }
 else if(_ARGV[1]=='GET')
 {
+	var pdir=win.getenv("USERPROFILE")+"\collect";
+	fsys.createDir(pdir);
+	
+	var blogpath=pdir+"\blog.txt";	
+	var blog=fsys.file(blogpath,"a")
+	blog.write("[",tostring(time.now()),"] ",_ARGV[2]);
 	return 0;
 }
 
+mainForm.SoftAbout.oncommand = function(id,event){
+	win.msgbox("A simple software which can save the files opened by louiesun. ","About",0/*_HWND_TOP*/);
+}
+
+mainForm.RegSet.oncommand = function(id,event){
+	return config();	
+}
+
+mainForm.RegCheck.oncommand = function(id,event){
+	return check("chk");
+}
+
+mainForm.RegReset.oncommand = function(id,event){
+	return reset();
+}
 
 mainForm.show();
 return win.loopMessage();
