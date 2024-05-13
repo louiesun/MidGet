@@ -16,6 +16,8 @@ title={cls="static";text="GetMiddleSettings";left=3;top=1;right=199;bottom=21;al
 
 function reset()
 {
+	var pdir=win.getenv("APPDATA")+"\MidGet\config";
+	
 	var usp=win.getenv("APPDATA")+"\MidGet";
 	fsys.createDir(usp);
 	usp=usp+"\config.txt";
@@ -91,6 +93,7 @@ function check(isset)
 }
 function config()
 {
+	var pdir=win.getenv("APPDATA")+"\MidGet\config";
 	reset();
 	//return ;
 	
@@ -115,12 +118,22 @@ function config()
 		filesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
 		var dop=win.reg(filesub);
 		var filetype=dop.queryValue("Progid");
-		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
-		var filereg=win.reg(filetype);
+		var regpath="HKEY_CLASSES_ROOT\"+filetype+"\shell\open";
+		filereg=win.reg(regpath);
+		var bkfilename=pdir+"\"+filetype+".reg";
+		win.msgbox(bkfilename,bkfilename);
+		filereg.save(bkfilename);
+		
+		filereg=win.reg(regpath+"\command");
 		var value=filereg.queryValue("");
+	
+		filereg=win.reg(regpath);
+		filereg.delKeyTree("");
+	
+		filereg=win.reg(regpath+"\command");
 		value=openpre+" && "+value;
 		//win.msgbox(value,value);
-		filereg.setSzValue("",value) ;
+		filereg.setSzValue("",value);
 	}
 	return check(true);
 }
@@ -138,7 +151,7 @@ if(_ARGV[1]=='SETUP')
 }
 else if(_ARGV[1]=='GET')
 {
-	var pdir=win.getenv("USERPROFILE")+"\collect";
+	var pdir=win.getenv("APPDATA")+"\MidGet\collect";
 	fsys.createDir(pdir);
 	
 	var blogpath=pdir+"\blog.txt";	
