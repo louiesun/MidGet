@@ -1,0 +1,10 @@
+﻿错误发生在文件---------------:
+D:\APPS\MidGet\main.aardio
+错误信息---------------:
+
+{Error}:
+{Line}:#90
+{File}:D:\APPS\MidGet\main.aardio
+{Error}:
+{Expected}:'='
+{Near}:'SetOriginReg'

@@ -3,177 +3,178 @@ import win.reg;
 import fsys;
 import fsys.file;
 /*DSG{{*/
-mainForm = win.form(text="MidGet";right=200;bottom=212;border="dialog frame")
+mainForm = win.form(text="MidGet";right=378;bottom=212;border="dialog frame")
 mainForm.add(
+ButtonEdit={cls="button";text="Edit";left=200;top=188;right=291;bottom=212;z=9};
+ButtonSave={cls="button";text="Save";left=292;top=185;right=379;bottom=213;z=10};
+Config={cls="edit";left=199;top=43;right=379;bottom=187;edge=1;multiline=1;readonly=1;z=7};
 RegCheck={cls="button";text="CheckConfig";left=2;top=99;right=200;bottom=169;z=4};
 RegReset={cls="button";text="ResetConfig";left=2;top=170;right=200;bottom=187;z=3};
 RegSet={cls="button";text="SetConfig";left=2;top=23;right=200;bottom=99;z=2};
 SoftAbout={cls="button";text="About";left=2;top=189;right=102;bottom=213;z=5};
 SoftHelp={cls="button";text="Help";left=102;top=189;right=200;bottom=213;z=6};
-title={cls="static";text="GetMiddleSettings";left=3;top=1;right=199;bottom=21;align="center";transparent=1;z=1}
+StaticConfigFile={cls="static";text="ConfigFile";left=258;top=23;right=316;bottom=47;transparent=1;z=8};
+title={cls="static";text="GetMiddleSettings";left=3;top=1;right=377;bottom=21;align="center";transparent=1;z=1}
 )
 /*}}*/
 
-function reset()
+function THROW_ERROR(id)
 {
-	var pdir=win.getenv("APPDATA")+"\MidGet\config";
-	
-	var usp=win.getenv("APPDATA")+"\MidGet";
-	fsys.createDir(usp);
-	usp=usp+"\config.txt";
-	var fl=fsys.file(usp,"r");
-	
-	if(fl.path==null)
-	{
-		win.msgboxErr("Config File Not Exist. ","CFNE",0);
-		return 1;
-	}
-	
-	var openpre=io._exepath+' GET "%1"'
-	
-	var filesub="";
-	while(1)
-	{
-		filesub=fl.read()
-		if(filesub==null) break;
-		filesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
-		var dop=win.reg(filesub);
-		var filetype=dop.queryValue("Progid");
-		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
-		var filereg=win.reg(filetype);
-		var value=filereg.queryValue("");
-		var tb=string.split(value,"< && >");
-		
-		filereg.setSzValue("",tb[#tb]) ;
-	}
-	return check(false);
+	win.msgboxErr("Error id: "+id,"ERROR!");
+	mainForm.close();
+	return id;
 }
-function check(isset)
+
+function RenameReg(RegDicStr,oldName,newName)
 {
-	var usp=win.getenv("APPDATA")+"\MidGet";
-	fsys.createDir(usp);
-	usp=usp+"\config.txt";
-	var fl=fsys.file(usp,"r");
-	
-	if(fl.path==null)
-	{
-		win.msgboxErr("Config File Not Exist. ","CFNE",0);
-		return 1;
-	}
-	
-	var openpre='"'+io._exepath+'" GET "%1"';
-	
-	var filesub="";
-	var toh="Fail: ";
+	var RegPath=win.reg(RegDicStr+"\"+oldName,true);
+	if(RegPath==null) return THROW_ERROR(-1);
+	if(win.reg(RegDicStr+"\"+newName,true)) return THROW_ERROR(-2);
+	return RegPath.renameKey(newName)
+}
+
+
+//"HKEY_CLASSES_ROOT\"+ProgidName+"\shell\open"
+
+function SetMidGetReg(ProgidName)
+{	
+	RenameReg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell","open","TempOpen")
+	return RenameReg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell","MidGetOpen","open")
+}
+function SetOriginReg(ProgidName)
+{
+	RenameReg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell","open","MidGetOpen")
+	return RenameReg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell","TempOpen","open")
+}
+function InitMidGetReg(ProgidName)
+{
+	if(win.reg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell\TempOpen",true)!=null) return 1;
+	var RegPath=win.reg("HKEY_CLASSES_ROOT\"+ProgidName+"\shell\MidGetOpen\command");
+	return RegPath.setSzValue("",'"'+io._exepath+'" MIDGET '+ProgidName+' "%1"');
+}
+//win.msgbox(InitMidGetReg("YiYang.Suite.pptx"));
+//win.msgbox(SetBackOriginReg("YiYang.Suite.pptx"));
+
+function GetProgid(FileSuffix)
+{
+	var UserChoicePath=win.reg("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+FileSuffix+"\UserChoice",true);
+	if(UserChoicePath==null) return THROW_ERROR(-1);
+	return UserChoicePath.queryValue("Progid")
+}
+
+function WorkWithConfig(ConfigFilePath,OperationName)
+{
+	var cfg=fsys.file(ConfigFilePath,"r");
+	if(cfg==null) return THROW_ERROR(-11);
+	var FileSuffix;
 	while(1)
 	{
-		filesub=fl.read();
-		if(filesub==null) break;
-		var tfilesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
-		var dop=win.reg(tfilesub);
-		var filetype=dop.queryValue("Progid");
-		filetype="HKEY_CLASSES_ROOT\"+filetype+"\shell\open\command"
-		var filereg=win.reg(filetype);
-		var value=filereg.queryValue("");
-		
-		var tb=string.split(value,"< && >");
-		var nvalue=openpre+" && "+tb[#tb];
-		
-		if((isset==true&&value!=nvalue)||(isset==false&&value==nvalue)) toh=toh+" "+filesub;
+		FileSuffix=cfg.read();
+		//win.msgbox(FileSuffix,"FileSuffix");
+		if(FileSuffix==null) break;
+		var Progid=GetProgid(FileSuffix);
+		//win.msgbox(Progid,"Progid");
+		if(Progid==-1) return THROW_ERROR(-21);
+		if(OperationName=="Set")
+		{
+			InitMidGetReg(Progid);
+			SetMidGetReg(Progid);
+		}
+		else if(OperationName=="Check")
+		{
+			if(win.reg("HKEY_CLASSES_ROOT\"+Progid+"\shell\TempOpen",true)==null)
+				win.msgbox(Progid,"Set not okay. ");
+		}
+		else if(OperationName=="Reset")
+		{
+			SetOriginReg(Progid);
+		}
+	}
+	cfg.close();
+}
+
+var CFGfilePath=string.getenv("APPDATA")+"\MidGet\config.txt";
+
+function Readcfg(ConfigFilePath)
+{
+	var cfg=fsys.file(ConfigFilePath,"r");
+	if(cfg==null)
+	{
+		win.msgbox("No config File! Please Write! ","NoConfigFile");
 		return;
 	}
-	//win.msgboxErr(toh,toh,0);
-	if(toh!="Fail: ")
-	{
-		win.msgboxErr(toh,"FAILED",0);
-		return 0;
-	}
-	if(isset!=null) win.msgbox("Seted","SUCCESS",0);
-	return 1;
+	return cfg.read(-1);
 }
-function config()
+function Writecfg(ConfigFilePath,text)
 {
-	var pdir=win.getenv("APPDATA")+"\MidGet\config";
-	reset();
-	//return ;
-	
-	var usp=win.getenv("APPDATA")+"\MidGet";
-	fsys.createDir(usp);
-	usp=usp+"\config.txt";
-	var fl=fsys.file(usp,"r");
-	
-	if(fl.path==null)
-	{
-		win.msgboxErr("Config File Not Exist. ","CFNE",0);
-		return 1;
-	}
-	
-	var openpre='"'+io._exepath+'" GET "%1"';
-	
-	var filesub="";
-	while(1)
-	{
-		filesub=fl.read()
-		if(filesub==null) break;
-		filesub="HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\."+filesub+"\UserChoice";
-		var dop=win.reg(filesub);
-		var filetype=dop.queryValue("Progid");
-		var regpath="HKEY_CLASSES_ROOT\"+filetype+"\shell\open";
-		filereg=win.reg(regpath);
-		var bkfilename=pdir+"\"+filetype+".reg";
-		win.msgbox(bkfilename,bkfilename);
-		filereg.save(bkfilename);
-		
-		filereg=win.reg(regpath+"\command");
-		var value=filereg.queryValue("");
-	
-		filereg=win.reg(regpath);
-		filereg.delKeyTree("");
-	
-		filereg=win.reg(regpath+"\command");
-		value=openpre+" && "+value;
-		//win.msgbox(value,value);
-		filereg.setSzValue("",value);
-	}
-	return check(true);
+	var cfg=fsys.file(ConfigFilePath,"w");
+	if(cfg==null) return THROW_ERROR(-11);
+	return cfg.write(text);
 }
 
-if(_ARGV[1]=='SETUP')
+if(_ARGV[1]=="MIDGET")
 {
-	if(!win.msgboxTest("Sure to reset? ","Confirm")) return 1;
-	var usp=win.getenv("APPDATA")+"\MidGet";
-	fsys.createDir(usp);
-	usp=usp+"\config.txt";
-	var fl=fsys.file(usp,"w");
-	fl.write('doc\r\ndocx\r\nppt\r\npptx\r\nxls\r\nxlsx\r\npdf\r\n');
-	fl.close();
-	config();
-}
-else if(_ARGV[1]=='GET')
-{
-	var pdir=win.getenv("APPDATA")+"\MidGet\collect";
-	fsys.createDir(pdir);
+	var FilePath=_ARGV[3];
+	var Progid=_ARGV[2];
 	
-	var blogpath=pdir+"\blog.txt";	
-	var blog=fsys.file(blogpath,"a")
-	blog.write("[",tostring(time.now()),"] ",_ARGV[2]);
-	return 0;
+	var blog;
+	fsys.createDir(string.getenv("APPDATA")+"\MidGet\collect");
+	blog=fsys.file(string.getenv("APPDATA")+"\MidGet\collect\blog.txt","a")
+	blog.write(FilePath+" ["+Progid+"] ("+tostring(time.now())+')\n');
+	blog.close();
+	
+	SetOriginReg(Progid);
+	import process;
+	process.execute(FilePath,"open");
+	SetMidGetReg(Progid);
+	
+	io.createDir(string.getenv("APPDATA")+"\MidGet\collect");
+	return fsys.copy(FilePath,string.getenv("APPDATA")+"\MidGet\collect");
 }
+else if(_ARGV[1]=="SET")
+{
+	return WorkWithConfig(CFGfilePath,"Set");
+}
+else if(_ARGV[1]=="CHECK")
+{
+	return WorkWithConfig(CFGfilePath,"Check");
+}
+else if(_ARGV[1]=="RESET")
+{
+	return WorkWithConfig(CFGfilePath,"Reset");
+}
+
+mainForm.Config.text=Readcfg(CFGfilePath);
 
 mainForm.SoftAbout.oncommand = function(id,event){
-	win.msgbox("A simple software which can save the files opened by louiesun. ","About",0/*_HWND_TOP*/);
+	win.msgbox("A simple software which can save the files opened by people. ","About",0/*_HWND_TOP*/);
 }
 
 mainForm.RegSet.oncommand = function(id,event){
-	return config();	
+	WorkWithConfig(CFGfilePath,"Set");
+	return;	
 }
 
 mainForm.RegCheck.oncommand = function(id,event){
-	return check("chk");
+	WorkWithConfig(CFGfilePath,"Check");
+	return;
 }
 
 mainForm.RegReset.oncommand = function(id,event){
-	return reset();
+	WorkWithConfig(CFGfilePath,"Reset");
+	return;
+}
+
+mainForm.ButtonEdit.oncommand = function(id,event){
+	mainForm.Config.readonly=!mainForm.Config.readonly;
+	if(mainForm.ButtonEdit.text=="Edit")
+		mainForm.ButtonEdit.text="Lock";
+	else if(mainForm.ButtonEdit.text=="Lock")
+		mainForm.ButtonEdit.text="Edit";
+}
+
+mainForm.ButtonSave.oncommand = function(id,event){
+	return Writecfg(CFGfilePath,mainForm.Config.text);
 }
 
 mainForm.show();
