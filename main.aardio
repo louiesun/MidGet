@@ -3,17 +3,16 @@ import win.reg;
 import fsys;
 import fsys.file;
 /*DSG{{*/
-mainForm = win.form(text="MidGet";right=378;bottom=212;border="dialog frame")
+mainForm = win.form(text="MidGet";right=378;bottom=212;border="dialog frame";max=false;min=false)
 mainForm.add(
-ButtonEdit={cls="button";text="Edit";left=200;top=188;right=291;bottom=212;z=9};
-ButtonSave={cls="button";text="Save";left=292;top=185;right=379;bottom=213;z=10};
-Config={cls="edit";left=199;top=43;right=379;bottom=187;edge=1;multiline=1;readonly=1;z=7};
-RegCheck={cls="button";text="CheckConfig";left=2;top=99;right=200;bottom=169;z=4};
-RegReset={cls="button";text="ResetConfig";left=2;top=170;right=200;bottom=187;z=3};
-RegSet={cls="button";text="SetConfig";left=2;top=23;right=200;bottom=99;z=2};
-SoftAbout={cls="button";text="About";left=2;top=189;right=102;bottom=213;z=5};
-SoftHelp={cls="button";text="Help";left=102;top=189;right=200;bottom=213;z=6};
-StaticConfigFile={cls="static";text="ConfigFile";left=258;top=23;right=316;bottom=47;transparent=1;z=8};
+ButtonEdit={cls="button";text="Edit";left=200;top=188;right=291;bottom=212;z=7};
+ButtonSave={cls="button";text="Save";left=292;top=185;right=379;bottom=213;z=8};
+Config={cls="edit";left=199;top=43;right=379;bottom=187;edge=1;multiline=1;readonly=1;z=5};
+EDhelp={cls="edit";left=2;top=125;right=199;bottom=213;edge=1;hscroll=1;multiline=1;readonly=1;vscroll=1;z=9};
+RegCheck={cls="button";text="CheckConfig";left=1;top=101;right=200;bottom=125;z=4};
+RegReset={cls="button";text="ResetConfig";left=102;top=23;right=198;bottom=99;z=3};
+RegSet={cls="button";text="SetConfig";left=2;top=23;right=102;bottom=99;z=2};
+StaticConfigFile={cls="static";text="ConfigFile";left=258;top=23;right=316;bottom=47;transparent=1;z=6};
 title={cls="static";text="GetMiddleSettings";left=3;top=1;right=377;bottom=21;align="center";transparent=1;z=1}
 )
 /*}}*/
@@ -77,8 +76,13 @@ function WorkWithConfig(ConfigFilePath,OperationName)
 		if(Progid==-1) return THROW_ERROR(-21);
 		if(OperationName=="Set")
 		{
-			InitMidGetReg(Progid);
-			SetMidGetReg(Progid);
+			if(win.reg("HKEY_CLASSES_ROOT\"+Progid+"\shell\TempOpen",true)==null)
+			{
+				InitMidGetReg(Progid);
+				SetMidGetReg(Progid);
+			}
+			else
+				win.msgbox("Seems like "+Progid+" has already been set. ","ERROR")
 		}
 		else if(OperationName=="Check")
 		{
@@ -146,10 +150,6 @@ else if(_ARGV[1]=="RESET")
 
 mainForm.Config.text=Readcfg(CFGfilePath);
 
-mainForm.SoftAbout.oncommand = function(id,event){
-	win.msgbox("A simple software which can save the files opened by people. ","About",0/*_HWND_TOP*/);
-}
-
 mainForm.RegSet.oncommand = function(id,event){
 	WorkWithConfig(CFGfilePath,"Set");
 	return;	
@@ -176,6 +176,12 @@ mainForm.ButtonEdit.oncommand = function(id,event){
 mainForm.ButtonSave.oncommand = function(id,event){
 	return Writecfg(CFGfilePath,mainForm.Config.text);
 }
+
+mainForm.EDhelp.oncommand = function(id,event){
+	
+}
+
+mainForm.EDhelp.text='A simple software to save files opened on the computer, mainly for students. \r\nUsage: \r\ntype the filetype(such as pptx ppt mp4) right and save. \r\nthe file will be store under:\r\n%APPDATA%\\MidGet\r\nSourceCode is on github:\r\nhttps://github.com/louiesun/MidGet\r\nIf useful, please star. '
 
 mainForm.show();
 return win.loopMessage();
