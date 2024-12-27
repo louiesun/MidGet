@@ -20,7 +20,6 @@ title={cls="static";text="GetMiddleSettings";left=3;top=1;right=377;bottom=21;al
 function THROW_ERROR(id)
 {
 	win.msgboxErr("Error id: "+id,"ERROR!");
-	mainForm.close();
 	return id;
 }
 
